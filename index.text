@@ -1,0 +1,443 @@
+什么是同源策略？
+同源策略/SOP（Same origin policy）是一种约定，由Netscape公司1995年引入浏览器，它是浏览器最核心也最基本的安全功能，如果缺少了同源策略，浏览器很容易受到XSS、CSFR等攻击。所谓同源是指"协议+域名+端口"三者相同，即便两个不同的域名指向同一个ip地址，也非同源。
+
+同源策略限制以下几种行为：
+
+1.) Cookie、LocalStorage 和 IndexDB 无法读取
+2.) DOM 和 Js对象无法获得
+3.) AJAX 请求不能发送
+常见跨域场景
+
+URL                                      说明                    是否允许通信
+http://www.domain.com/a.js
+http://www.domain.com/b.js         同一域名，不同文件或路径           允许
+http://www.domain.com/lab/c.js
+
+http://www.domain.com:8000/a.js
+http://www.domain.com/b.js         同一域名，不同端口                不允许
+ 
+http://www.domain.com/a.js
+https://www.domain.com/b.js        同一域名，不同协议                不允许
+ 
+http://www.domain.com/a.js
+http://192.168.4.12/b.js           域名和域名对应相同ip              不允许
+ 
+http://www.domain.com/a.js
+http://x.domain.com/b.js           主域相同，子域不同                不允许
+http://domain.com/c.js
+ 
+http://www.domain1.com/a.js
+http://www.domain2.com/b.js        不同域名                         不允许
+跨域解决方案
+
+1、 通过jsonp跨域
+www.love.com
+<script>
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.src = 'http://www.sx.com?user=520&callback=back';
+document.head.appendChild(script);
+function back(data){
+	console.log(data)
+}
+</script>
+www.sx.com
+<?php 
+
+if($_GET['user'] == 520){
+	echo 'l love you to';
+}
+
+ ?>
+缺点：只能实现get一种请求
+
+2 document.domain + iframe跨域
+此方案仅限主域相同，子域不同的跨域应用场景。
+
+实现原理：两个页面都通过js强制设置document.domain为基础主域，就实现了同域。
+
+www.love.com 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	miss rfedarewq 
+</body>
+<script>
+document.domain = 'love.com';
+var infos = `习近平提出的指导思想
+中国梦，是中国共产党召开第十八次全国代表大会以来，习近平总书记所提出的重要指导思想和重要执政理念，正式提出于2012年11月29日。习总书记把“中国梦”定义为“实现中华民族伟大复兴，就是中华民族近代以来最伟大梦想”，并且表示这个梦“一定能实现”。
+“中国梦”的核心目标也可以概括为“两个一百年”的目标，也就是：到2021年中国共产党成立100周年和2049年中华人民共和国成立100周年时，逐步并最终顺利实现中华民族的伟大复兴，具体表现是国家富强、民族振兴、人民幸福，实现途径是走中国特色的社会主义道路、坚持中国特色社会主义理论体系、弘扬民族精神、凝聚中国力量，实施手段是政治、经济、文化、社会、生态文明五位一体建设。
+`;
+</script>
+</html>
+
+www.miss.love.com
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	miss rfedarewq 
+</body>
+<script>
+document.domain = 'love.com';
+var love = '当我松开飞机迪斯科拉法基开绿灯撒酒喝的';
+console.log(window.parent.infos)
+</script>
+</html>
+
+www.miss.love.com 只能通过window.parent.xx获取 www.love.com 里面的变量  
+且只能www.love.com打开有效果
+条件：1  www.love.com  iframe 引入 www.miss.love.com
+      2  www.love.com 和www.miss.love.com 同时设置 document.domain = 'love.com';
+      3  www.love.com 设置变量
+      4  www.miss.love.com 通过 window.parent.xx 获取
+      5  www.love.com显示效果
+
+
+3 location.hash + iframe跨域
+
+实现原理： a欲与b跨域相互通信，通过中间页c来实现。 三个页面，不同域之间利用iframe的location.hash传值，相同域之间直接js访问来通信。
+
+具体实现：A域：a.html -> B域：b.html -> A域：c.html，a与b不同域只能通过hash值单向通信，b与c也不同域也只能单向通信，但c与a同域，所以c可通过parent.parent访问a页面所有对象。
+
+www.hate.love.com/index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<iframe id = "iframe" src="http://www.miss.love.com/index.html" style="display: none;" frameborder="0"></iframe>
+</body>
+<script>
+var iframe = document.getElementById('iframe');
+// 向http://www.miss.love.com/index.html传hash值
+setTimeout(function(){
+	iframe.src = iframe.src + '#ysh=god'
+},1000);
+// 开放给同域的回调方法
+function onCallback(res){
+	console.log(res)
+}
+</script>
+</html>
+
+www.miss.love.com/index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<iframe id = "iframe" src="http://www.hate.love.com/index2.html" style="display: none;" frameborder="0"></iframe>
+</body>
+<script>
+var iframe = document.getElementById('iframe');
+// 监听传来的hash值，再传给
+window.onhashchange = function(){
+	iframe.src = iframe.src + location.hash;
+}
+</script>
+</html>
+
+www.hate.love.com/index2.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+index2
+</body>
+<script>
+window.onhashchange = function(){
+	window.parent.parent.onCallback('adsfkjdsafhdjksahfjkds')
+}
+</script>
+</html>
+
+
+4 window.name + iframe跨域
+
+window.name属性的独特之处：name值在不同的页面（甚至不同域名）加载后依旧存在，并且可以支持非常长的 name 值（2MB）。
+
+http://www.hate.love.com/
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	dsfafd
+</body>
+<script>
+window.name = 'dsfafdsa';
+window.location.href = "http://www.miss.love.com/"
+</script>
+</html>
+
+http://www.miss.love.com/
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	
+</body>
+<script>
+console.log(window.name)
+</script>
+</html>
+
+5 postMessage跨域
+
+postMessage是HTML5 XMLHttpRequest Level 2中的API，且是为数不多可以跨域操作的window属性之一，它可用于解决以下方面的问题：
+a.） 页面和其打开的新窗口的数据传递
+b.） 多窗口之间消息传递
+c.） 页面与嵌套的iframe消息传递
+d.） 上面三个场景的跨域数据传递
+
+用法：postMessage(data,origin)方法接受两个参数
+data： html5规范支持任意基本类型或可复制的对象，但部分浏览器只支持字符串，所以传参时最好用JSON.stringify()序列化。
+origin： 协议+主机+端口号，也可以设置为"*"，表示可以传递给任意窗口，如果要指定和当前窗口同源的话设置为"/"。
+
+http://www.hate.love.com
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<iframe id = "iframe" src="http://www.miss.love.com/index.html" style="display: none;" frameborder="0"></iframe>
+</body>
+<script>
+var iframe = document.getElementById('iframe');
+iframe.onload = function(){
+	var data = {
+		name:'yshloveyou'
+	}
+	// 发送
+	iframe.contentWindow.postMessage(JSON.stringify(data),'http://www.miss.love.com')
+}
+// 监听
+window.addEventListener('message',function(e){
+	console.log(e.data)
+},false)
+</script>
+</html>
+
+http://www.miss.love.com
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	
+</body>
+<script>
+window.addEventListener('message',function(e){
+	console.log('here  ='+e.data);
+	var data = JSON.parse(e.data);
+	if(data){
+		data.num = 88;
+		// 发送
+		window.parent.postMessage(JSON.stringify(data),'http://www.hate.love.com')
+	}
+},false)
+</script>
+</html>
+
+流程 a.html 
+  1 发送 iframe.contentWindow.postMessage(JSON.stringify(data),'http://b.com')
+  2  监听 window.addEventListener('message',function(e){
+				console.log(e.data)
+			},false)
+  b.html
+  <!-- 监听  -->
+    window.addEventListener('message',function(e){
+	console.log('here  ='+e.data);
+	var data = JSON.parse(e.data);
+	if(data){
+		data.num = 88;
+		// 发送
+		window.parent.postMessage(JSON.stringify(data),'http://a.com')
+	}
+    },false)
+
+ 访问 a.html  然后 b.html 添加数据  a.html 获取添加后的数据
+
+
+ 6  跨域资源共享（CORS）
+
+ 普通跨域请求：只服务端设置Access-Control-Allow-Origin即可，前端无须设置。
+带cookie请求：前后端都需要设置字段，另外需注意：所带cookie为跨域请求接口所在域的cookie，而非当前页。
+目前，所有浏览器都支持该功能(IE8+：IE8/9需要使用XDomainRequest对象来支持CORS）)，CORS也已经成为主流的跨域解决方案。
+CORS需要浏览器和服务器同时支持。目前，所有浏览器都支持该功能，IE浏览器不能低于IE10。
+整个CORS通信过程，都是浏览器自动完成，不需要用户参与。对于开发者来说，CORS通信与同源的AJAX通信没有差别，代码完全一样。浏览器一旦发现AJAX请求跨源，就会自动添加一些附加的头信息，有时还会多出一次附加的请求，但用户不会有感觉。
+因此，实现CORS通信的关键是服务器。只要服务器实现了CORS接口，就可以跨源通信
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	
+</body>
+<script>
+var xhr = new XMLHttpRequest(); // IE8/9需用window.XDomainRequest兼容
+xhr.open('post','http://www.hate.love.com/index.php',true);
+xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+xhr.send('ysh=520');
+xhr.onreadystatechange = function(){
+	if(xhr.readyState == 4 && xhr.status == 200){
+		console.log(xhr.responseText)
+	}
+}
+
+</script>
+</html>
+
+<?php 
+
+header('Access-Control-Allow-Origin:*');
+
+echo $_POST['ysh'];
+ ?>
+
+// 设置是否带cookie
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	
+</body>
+<script>
+var xhr = new XMLHttpRequest(); // IE8/9需用window.XDomainRequest兼容
+// 设置是否带cookie
+xhr.withCredentials = true;
+xhr.open('post','http://www.hate.love.com/index.php',true);
+xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+xhr.send('ysh=520');
+xhr.onreadystatechange = function(){
+	if(xhr.readyState == 4 && xhr.status == 200){
+		console.log(xhr.responseText)
+	}
+}
+
+</script>
+</html>
+
+<?php 
+
+header('Access-Control-Allow-Origin:http://www.miss.love.com');
+header('Access-Control-Allow-Credentials:true');
+echo $_POST['ysh'];
+ ?>
+
+两种请求
+浏览器将CORS请求分成两类：简单请求（simple request）和非简单请求（not-so-simple request）。
+只要同时满足以下两大条件，就属于简单请求。
+（1) 请求方法是以下三种方法之一：
+HEAD
+GET
+POST
+（2）HTTP的头信息不超出以下几种字段：
+Accept
+Accept-Language
+Content-Language
+Last-Event-ID
+Content-Type：只限于三个值application/x-www-form-urlencoded、multipart/form-data、text/plain
+凡是不同时满足上面两个条件，就属于非简单请求。
+浏览器对这两种请求的处理，是不一样的
+
+简单请求
+3.1 基本流程
+对于简单请求，浏览器直接发出CORS请求。具体来说，就是在头信息之中，增加一个Origin字段。
+下面是一个例子，浏览器发现这次跨源AJAX请求是简单请求，就自动在头信息之中，添加一个Origin字段。
+
+GET /cors HTTP/1.1
+Origin: http://api.bob.com
+Host: api.alice.com
+Accept-Language: en-US
+Connection: keep-alive
+User-Agent: Mozilla/5.0...
+上面的头信息中，Origin字段用来说明，本次请求来自哪个源（协议 + 域名 + 端口）。服务器根据这个值，决定是否同意这次请求。
+如果Origin指定的源，不在许可范围内，服务器会返回一个正常的HTTP回应。浏览器发现，这个回应的头信息没有包含Access-Control-Allow-Origin字段（详见下文），就知道出错了，从而抛出一个错误，被XMLHttpRequest的onerror回调函数捕获。注意，这种错误无法通过状态码识别，因为HTTP回应的状态码有可能是200。
+如果Origin指定的域名在许可范围内，服务器返回的响应，会多出几个头信息字段。
+
+Access-Control-Allow-Origin: http://api.bob.com
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: FooBar
+Content-Type: text/html; charset=utf-8
+上面的头信息之中，有三个与CORS请求相关的字段，都以Access-Control-开头
+
+（1）Access-Control-Allow-Origin
+该字段是必须的。它的值要么是请求时Origin字段的值，要么是一个*，表示接受任意域名的请求。
+（2）Access-Control-Allow-Credentials
+该字段可选。它的值是一个布尔值，表示是否允许发送Cookie。默认情况下，Cookie不包括在CORS请求之中。设为true，即表示服务器明确许可，Cookie可以包含在请求中，一起发给服务器。这个值也只能设为true，如果服务器不要浏览器发送Cookie，删除该字段即可。
+（3）Access-Control-Expose-Headers
+该字段可选。CORS请求时，XMLHttpRequest对象的getResponseHeader()方法只能拿到6个基本字段：Cache-Control、Content-Language、Content-Type、Expires、Last-Modified、Pragma。如果想拿到其他字段，就必须在Access-Control-Expose-Headers里面指定。上面的例子指定，getResponseHeader('FooBar')可以返回FooBar字段的值。
+3.2 withCredentials 属性
+上面说到，CORS请求默认不发送Cookie和HTTP认证信息。如果要把Cookie发到服务器，一方面要服务器同意，指定Access-Control-Allow-Credentials字段。
+
+Access-Control-Allow-Credentials: true
+另一方面，开发者必须在AJAX请求中打开withCredentials属性。
+
+var xhr = new XMLHttpRequest();
+xhr.withCredentials = true;
+否则，即使服务器同意发送Cookie，浏览器也不会发送。或者，服务器要求设置Cookie，浏览器也不会处理。
+但是，如果省略withCredentials设置，有的浏览器还是会一起发送Cookie。这时，可以显式关闭withCredentials。
+
+xhr.withCredentials = false;
+需要注意的是，如果要发送Cookie，Access-Control-Allow-Origin就不能设为星号，必须指定明确的、与请求网页一致的域名。同时，Cookie依然遵循同源政策，只有用服务器域名设置的Cookie才会上传，其他域名的Cookie并不会上传，且（跨源）原网页代码中的document.cookie也无法读取服务器域名下的Cookie。
+
+
+（1）Access-Control-Allow-Origin
+该字段是必须的。它的值要么是请求时Origin字段的值，要么是一个*，表示接受任意域名的请求。
+（2）Access-Control-Allow-Credentials
+该字段可选。它的值是一个布尔值，表示是否允许发送Cookie。默认情况下，Cookie不包括在CORS请求之中。设为true，即表示服务器明确许可，Cookie可以包含在请求中，一起发给服务器。这个值也只能设为true，如果服务器不要浏览器发送Cookie，删除该字段即可。
+（3）Access-Control-Expose-Headers
+该字段可选。CORS请求时，XMLHttpRequest对象的getResponseHeader()方法只能拿到6个基本字段：Cache-Control、Content-Language、Content-Type、Expires、Last-Modified、Pragma。如果想拿到其他字段，就必须在Access-Control-Expose-Headers里面指定。上面的例子指定，getResponseHeader('FooBar')可以返回FooBar字段的值。
+3.2 withCredentials 属性
+上面说到，CORS请求默认不发送Cookie和HTTP认证信息。如果要把Cookie发到服务器，一方面要服务器同意，指定Access-Control-Allow-Credentials字段。
+
+Access-Control-Allow-Credentials: true
+另一方面，开发者必须在AJAX请求中打开withCredentials属性。
+
+var xhr = new XMLHttpRequest();
+xhr.withCredentials = true;
+否则，即使服务器同意发送Cookie，浏览器也不会发送。或者，服务器要求设置Cookie，浏览器也不会处理。
+但是，如果省略withCredentials设置，有的浏览器还是会一起发送Cookie。这时，可以显式关闭withCredentials。
+
+xhr.withCredentials = false;
+需要注意的是，如果要发送Cookie，Access-Control-Allow-Origin就不能设为星号，必须指定明确的、与请求网页一致的域名。同时，Cookie依然遵循同源政策，只有用服务器域名设置的Cookie才会上传，其他域名的Cookie并不会上传，且（跨源）原网页代码中的document.cookie也无法读取服务器域名下的Cookie。
